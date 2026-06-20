@@ -37,10 +37,9 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
   useEffect(() => {
     const audio = new Audio();
     audio.preload = "none";
-    audio.crossOrigin = "anonymous";
     audioRef.current = audio;
 
-    // Create Web Audio analyser pipeline (once)
+    // Create Web Audio analyser pipeline (graceful degradation if CORS unsupported)
     try {
       const ctx = new AudioContext();
       const analyser = ctx.createAnalyser();
