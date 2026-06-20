@@ -14,6 +14,7 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
   const retryCount = useRef(0);
   const maxRetries = 2;
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usedHttpsUpgrade = useRef(false);
   const callbackRef = useRef(onPlayCallback);
   callbackRef.current = onPlayCallback;
 
@@ -40,6 +41,16 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
       setState(prev => ({ ...prev, isLoading: true }));
     };
     const onError = () => {
+      if (usedHttpsUpgrade.current) {
+        usedHttpsUpgrade.current = false;
+        retryCount.current = 0;
+        const cur = audioRef.current;
+        if (cur) {
+          cur.src = cur.src.replace("https://", "http://");
+          cur.play().catch(() => {});
+          return;
+        }
+      }
       setState(prev => {
         if (retryCount.current < maxRetries) {
           retryCount.current++;
@@ -89,7 +100,7 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
     const audio = audioRef.current;
     if (!audio) return;
 
-    const url = station.url_resolved || station.url;
+    let url = station.url_resolved || station.url;
     if (!url) {
       setState(prev => ({ ...prev, error: "No stream URL available" }));
       return;
@@ -97,6 +108,12 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
 
     if (retryTimer.current) clearTimeout(retryTimer.current);
     retryCount.current = 0;
+
+    usedHttpsUpgrade.current = false;
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && url.startsWith("http://")) {
+      usedHttpsUpgrade.current = true;
+      url = "https://" + url.slice(7);
+    }
 
     setState(prev => ({
       ...prev,
