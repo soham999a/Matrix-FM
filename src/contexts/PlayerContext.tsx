@@ -53,6 +53,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const playWithTracking = useCallback(
     (station: RadioStation) => {
+      if (audioPlayer.currentStation?.id === station.id && audioPlayer.isPlaying) {
+        return; // Already playing this station
+      }
       if (sleepTimer.active) {
         sleepTimer.cancelTimer();
         toast("Sleep timer cancelled", "info");

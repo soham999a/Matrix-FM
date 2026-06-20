@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { MatrixMark } from "./MatrixMark";
 import { SpectrumAnalyser } from "./SpectrumAnalyser";
+import { toast } from "./Toasts";
 
 const SLEEP_OPTIONS = [15, 30, 45, 60];
 
@@ -70,28 +71,38 @@ export function NowPlaying() {
               </button>
             </div>
             <div className="flex flex-col gap-1">
-              {recentlyPlayed.recent.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => player.playWithTracking(s)}
-                  className="w-full ink-card rounded-lg p-grid-2 flex items-center gap-2 text-left hover:bg-ink-light transition-colors active:scale-[0.98]"
-                >
-                  <div className="w-8 h-8 rounded bg-ink flex items-center justify-center shrink-0 overflow-hidden">
-                    {s.favicon ? (
-                      <img src={s.favicon} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="font-ui text-[10px] text-slate">{s.name.slice(0, 2).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-sans text-sm text-bone truncate">{s.name}</p>
-                    <p className="font-ui text-[10px] text-slate uppercase tracking-wider truncate">
-                      {s.tags?.split(",")[0] || s.country || "Radio"}
-                    </p>
-                  </div>
-                  <Play size={16} className="text-slate shrink-0" />
-                </button>
-              ))}
+              {recentlyPlayed.recent.map(s => {
+                const isActive = player.currentStation?.id === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => { if (isActive) player.togglePlay(); else player.playWithTracking(s); }}
+                    className={`w-full ink-card rounded-lg p-grid-2 flex items-center gap-2 text-left transition-colors active:scale-[0.98] ${
+                      isActive ? "border border-gold bg-ink-light" : "hover:bg-ink-light"
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded bg-ink flex items-center justify-center shrink-0 overflow-hidden">
+                      {s.favicon ? (
+                        <img src={s.favicon} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-ui text-[10px] text-slate">{s.name.slice(0, 2).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sans text-sm text-bone truncate">{s.name}</p>
+                      <p className="font-ui text-[10px] text-slate uppercase tracking-wider truncate">
+                        {s.tags?.split(",")[0] || s.country || "Radio"}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {isActive && player.isPlaying
+                        ? <Pause size={16} className="text-gold" />
+                        : <Play size={16} className="text-slate" />
+                      }
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -228,7 +239,8 @@ export function NowPlaying() {
           </div>
           <button
             onClick={() => {
-              navigator.clipboard?.writeText(currentStation.url).catch(() => {});
+              const text = `${currentStation.name} — ${currentStation.url}`;
+              navigator.clipboard?.writeText(text).then(() => toast("Station link copied")).catch(() => {});
             }}
             className="flex flex-col items-center gap-grid-1 text-slate hover:text-bone transition-colors"
           >

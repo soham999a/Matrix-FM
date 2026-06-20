@@ -16,6 +16,7 @@ export function SpectrumAnalyser() {
   const rafId = useRef(0);
   const { player } = usePlayer();
   const { isPlaying, currentStation, getFrequencyData } = player;
+  const analyserAvailable = !!getFrequencyData;
 
   useEffect(() => {
     if (!isPlaying || !currentStation || !getFrequencyData) return;
@@ -115,7 +116,7 @@ export function SpectrumAnalyser() {
     };
   }, [isPlaying, currentStation, getFrequencyData]);
 
-  if (!isPlaying || !currentStation) return null;
+  if (!isPlaying || !currentStation || !analyserAvailable) return null;
 
   return (
     <div className="flex justify-center w-full mb-grid-3">

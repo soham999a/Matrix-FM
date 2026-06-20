@@ -19,12 +19,9 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
   const callbackRef = useRef(onPlayCallback);
   callbackRef.current = onPlayCallback;
 
-  // Web Audio analyser refs (created once, live for app lifetime)
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const freqDataRef = useRef<Uint8Array>(new Uint8Array(0));
-  const analyserReady = useRef(false);
 
   const [state, setState] = useState<AudioPlayerState>({
     currentStation: null,
@@ -39,27 +36,24 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
     audio.preload = "none";
     audioRef.current = audio;
 
-    // Create Web Audio analyser pipeline (graceful degradation if CORS unsupported)
+    // Web Audio analyser — graceful degradation if CORS unsupported
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
     try {
-      const ctx = new AudioContext();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = FFT_SIZE;
       const source = ctx.createMediaElementSource(audio);
       source.connect(analyser);
       analyser.connect(ctx.destination);
-      audioCtxRef.current = ctx;
       analyserRef.current = analyser;
-      sourceRef.current = source;
       freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-      analyserReady.current = true;
     } catch {
-      analyserReady.current = false;
+      // CORS not supported by stream — analyser unavailable, audio still plays
     }
 
     const onPlaying = async () => {
-      // Resume AudioContext if suspended (autoplay policy)
-      if (audioCtxRef.current?.state === "suspended") {
-        await audioCtxRef.current.resume();
+      if (ctx.state === "suspended") {
+        await ctx.resume().catch(() => {});
       }
       setState(prev => ({ ...prev, isPlaying: true, isLoading: false, error: null }));
     };
@@ -106,8 +100,7 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
       audio.removeEventListener("error", onError);
       audio.removeEventListener("ended", onEnded);
       if (retryTimer.current) clearTimeout(retryTimer.current);
-      // Close audio context
-      if (audioCtxRef.current) audioCtxRef.current.close();
+      ctx.close().catch(() => {});
       audio.pause();
       audio.src = "";
     };

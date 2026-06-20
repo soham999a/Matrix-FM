@@ -1,22 +1,37 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import { Volume2, VolumeX, Trash2, LogOut, Music, RotateCcw } from "lucide-react";
 import { toast } from "./Toasts";
+
+function usePersistedState(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
+  const [val, setVal] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored !== null ? stored === "true" : defaultValue;
+    } catch { return defaultValue; }
+  });
+  useEffect(() => { localStorage.setItem(key, String(val)); }, [key, val]);
+  return [val, setVal];
+}
 
 export function Settings() {
   const { player, favorites, recentlyPlayed } = usePlayer();
   const { volume, setVolume, stop } = player;
 
-  const [highFidelity, setHighFidelity] = useState(true);
-  const [monoDownmix, setMonoDownmix] = useState(false);
-  const [hapticFeedback, setHapticFeedback] = useState(true);
-  const [autoUpdate, setAutoUpdate] = useState(true);
+  const [highFidelity, setHighFidelity] = usePersistedState("matrix-hifi", true);
+  const [monoDownmix, setMonoDownmix] = usePersistedState("matrix-mono", false);
+  const [hapticFeedback, setHapticFeedback] = usePersistedState("matrix-haptic", true);
+  const [autoUpdate, setAutoUpdate] = usePersistedState("matrix-autoupdate", true);
 
   const handleClearFavorites = useCallback(() => {
-    const count = favorites.favorites.length;
+    const favs = favorites.favorites;
+    const count = favs.length;
     if (count === 0) return;
-    favorites.favorites.forEach(f => favorites.removeFavorite(f.id));
-    toast(`${count} favorites cleared`, "info");
+    try {
+      localStorage.setItem("matrix-fm-favorites", "[]");
+    } catch {}
+    favs.forEach(f => favorites.removeFavorite(f.id));
+    toast(`${count} favorite${count > 1 ? "s" : ""} cleared`, "info");
   }, [favorites]);
 
   const handleClearRecent = useCallback(() => {
