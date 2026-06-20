@@ -9,8 +9,6 @@ interface AudioPlayerState {
   error: string | null;
 }
 
-const FFT_SIZE = 64;
-
 export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const retryCount = useRef(0);
@@ -18,10 +16,6 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callbackRef = useRef(onPlayCallback);
   callbackRef.current = onPlayCallback;
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const freqDataRef = useRef<Uint8Array>(new Uint8Array(0));
 
   const [state, setState] = useState<AudioPlayerState>({
     currentStation: null,
@@ -36,25 +30,7 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
     audio.preload = "none";
     audioRef.current = audio;
 
-    // Web Audio analyser — graceful degradation if CORS unsupported
-    const ctx = new AudioContext();
-    audioCtxRef.current = ctx;
-    try {
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = FFT_SIZE;
-      const source = ctx.createMediaElementSource(audio);
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      analyserRef.current = analyser;
-      freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-    } catch {
-      // CORS not supported by stream — analyser unavailable, audio still plays
-    }
-
-    const onPlaying = async () => {
-      if (ctx.state === "suspended") {
-        await ctx.resume().catch(() => {});
-      }
+    const onPlaying = () => {
       setState(prev => ({ ...prev, isPlaying: true, isLoading: false, error: null }));
     };
     const onPause = () => {
@@ -100,17 +76,9 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
       audio.removeEventListener("error", onError);
       audio.removeEventListener("ended", onEnded);
       if (retryTimer.current) clearTimeout(retryTimer.current);
-      ctx.close().catch(() => {});
       audio.pause();
       audio.src = "";
     };
-  }, []);
-
-  const getFrequencyData = useCallback(() => {
-    const analyser = analyserRef.current;
-    if (!analyser) return null;
-    analyser.getByteFrequencyData(freqDataRef.current as Uint8Array<ArrayBuffer>);
-    return freqDataRef.current;
   }, []);
 
   const clearError = useCallback(() => {
@@ -191,5 +159,5 @@ export function useAudioPlayer(onPlayCallback?: (station: RadioStation) => void)
     setState(prev => ({ ...prev, volume: clamped }));
   }, []);
 
-  return { ...state, play, togglePlay, stop, setVolume, clearError, getFrequencyData };
+  return { ...state, play, togglePlay, stop, setVolume, clearError };
 }
