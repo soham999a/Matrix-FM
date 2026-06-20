@@ -1,0 +1,17 @@
+{
+  "name": "MATRIX FM",
+  "short_name": "MATRIX FM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "description": "Precision radio streaming. Worldwide stations, zero noise.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
